@@ -22,12 +22,14 @@ defmodule OdysseyWeb.UserControllerTest do
     permissions: %{admin: [:view_all_users]}
   }
 
-  def fixture(:user) do
-    {:ok, user} = Accounts.create_user(@user_params)
+  def fixture(_, user_params \\ @user_params)
+
+  def fixture(:user, user_params) do
+    {:ok, user} = Accounts.create_user(user_params)
     user
   end
 
-  def fixture(:admin) do
+  def fixture(:admin, _) do
     Repo.insert!(@admin_params)
   end
 
@@ -36,7 +38,7 @@ defmodule OdysseyWeb.UserControllerTest do
   end
 
   describe "index/1" do
-    test "lists all users for user with admin permissions", %{conn: conn} do
+    test "lists all users when current user has admin permissions", %{conn: conn} do
       users = [%{name: "John", email: "john@example.com", password: "john pass", password_confirmation: "john pass"},
                %{name: "Jane", email: "jane@example.com", password: "jane pass", password_confirmation: "jane pass"}]
 
@@ -62,7 +64,7 @@ defmodule OdysseyWeb.UserControllerTest do
       end
     end
 
-    test "returns unauthorized error for invalid permissions", %{conn: conn} do
+    test "returns unauthorized error when current user has invalid permissions", %{conn: conn} do
       users = [%{name: "John", email: "john@example.com", password: "john pass", password_confirmation: "john pass"},
                %{name: "Jane", email: "jane@example.com", password: "jane pass", password_confirmation: "jane pass"}]
 
@@ -71,6 +73,46 @@ defmodule OdysseyWeb.UserControllerTest do
 
       user = fixture(:user)
       with {:ok, token, _claims} <- sign_in(user) do
+        response =
+          conn
+          |> put_req_header("authorization", "Bearer #{token}")
+          |> get(Routes.user_path(conn, :index))
+
+        assert response.status == 401
+        assert response.resp_body == "{\"error\":\"unauthorized\"}"
+      end
+    end
+  end
+
+  describe "show/2" do
+    test "shows a user when current user has admin permissions", %{conn: conn} do
+      user = fixture(:user)
+      admin = fixture(:admin)
+      with {:ok, token, _claims} <- sign_in(admin) do
+        response =
+          conn
+          |> put_req_header("authorization", "Bearer #{token}")
+          |> get(Routes.user_path(conn, :show, user.id))
+          |> json_response(200)
+
+        expected = %{
+          "name" => user.name, "id" => user.id, "email" => user.email
+        }
+        assert response == expected
+      end
+    end
+
+    test "returns unauthorized error for invalid permissions", %{conn: conn} do
+      user_params = %{
+        name: "Test Visible user",
+        email: "user2@test.com",
+        password: "password",
+        password_confirmation: "password"
+      }
+
+      fixture(:user, user_params)
+      current_user = fixture(:user)
+      with {:ok, token, _claims} <- sign_in(current_user) do
         response =
           conn
           |> put_req_header("authorization", "Bearer #{token}")
@@ -140,14 +182,14 @@ defmodule OdysseyWeb.UserControllerTest do
     end
   end
 
-  describe "show/1" do
+  describe "my_account/1" do
     test "allows signed in user to view their information", %{conn: conn} do
       user = fixture(:user)
       with {:ok, token, _claims} <- sign_in(user) do
         response =
           conn
           |> put_req_header("authorization", "Bearer #{token}")
-          |> get(Routes.user_path(conn, :show))
+          |> get(Routes.user_path(conn, :my_account))
           |> json_response(200)
 
         expected = %{"email" => user.email, "id" => user.id, "name" => user.name}

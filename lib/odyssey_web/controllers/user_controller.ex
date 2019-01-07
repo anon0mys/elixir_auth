@@ -5,7 +5,7 @@ defmodule OdysseyWeb.UserController do
   alias Odyssey.Auth
 
   action_fallback OdysseyWeb.FallbackController
-  plug Guardian.Permissions.Bitwise, [ensure: %{admin: [:view_all_users]}] when action in [:index]
+  plug Guardian.Permissions.Bitwise, [ensure: %{admin: [:view_all_users]}] when action in [:index, :show]
 
   def create(conn, %{"user" => user_params}) do
     with {:ok, %User{} = user} <- Accounts.create_user(user_params),
@@ -23,8 +23,13 @@ defmodule OdysseyWeb.UserController do
     end
   end
 
-  def show(conn, _params) do
+  def my_account(conn, _params) do
     user = Auth.Guardian.Plug.current_resource(conn)
+    conn |> render("user.json", user: user)
+  end
+
+  def show(conn, %{"id" => id}) do
+    user = Accounts.get_user!(id)
     conn |> render("user.json", user: user)
   end
 

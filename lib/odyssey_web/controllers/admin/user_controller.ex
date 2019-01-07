@@ -1,3 +1,0 @@
-defmodule AdminUserController do
-  
-end
