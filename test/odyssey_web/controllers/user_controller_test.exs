@@ -2,7 +2,9 @@ defmodule OdysseyWeb.UserControllerTest do
   use OdysseyWeb.ConnCase
 
   alias Odyssey.Accounts
+  alias Odyssey.Accounts.User
   alias Odyssey.Auth.Guardian
+  alias Odyssey.Repo
 
   @user_params %{
     name: "Test User",
@@ -10,6 +12,15 @@ defmodule OdysseyWeb.UserControllerTest do
     password: "password",
     password_confirmation: "password"
   }
+
+  @escalated_params %{
+    name: "Test User",
+    email: "user@test.com",
+    password: "password",
+    password_confirmation: "password",
+    permissions: %{admin: [:view_all_users, :edit_users]}
+  }
+  @default_permissions %{"default" => ["my_profile"]}
 
   def fixture(_, user_params \\ @user_params)
 
@@ -30,6 +41,18 @@ defmodule OdysseyWeb.UserControllerTest do
         |> json_response(200)
 
       assert response["jwt"] != nil
+      assert Repo.get_by(User, %{email: @escalated_params[:email]}) != nil
+    end
+
+    test "creates a user ignoring attempts to escalate permissions", %{conn: conn} do
+      response =
+        conn
+        |> post(Routes.user_path(conn, :create, %{"user" => @escalated_params}))
+        |> json_response(200)
+
+      assert response["jwt"] != nil
+      user = Repo.get_by(User, %{email: @escalated_params[:email]})
+      assert user.permissions == @default_permissions
     end
 
     test "returns an error and does not create user if params are invalid", %{conn: conn} do
