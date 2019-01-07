@@ -18,6 +18,7 @@ defmodule Odyssey.Accounts.User do
   def update_changeset(%User{} = user, attrs) do
     user
     |> cast(attrs, [:name, :email])
+    |> validate_required([:name, :email])
     |> validate_format(:email, ~r/@/)
     |> unique_constraint(:email)
   end
