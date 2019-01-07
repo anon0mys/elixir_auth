@@ -1,5 +1,11 @@
 defmodule Odyssey.Auth.Guardian do
-  use Guardian, otp_app: :odyssey
+  use Guardian, otp_app: :odyssey,
+    permissions: %{
+      default: [:my_profile],
+      admin: [:dashboard, :view_all_users, :edit_users]
+    }
+
+  use Guardian.Permissions.Bitwise
 
   alias Odyssey.Accounts
 
@@ -12,5 +18,12 @@ defmodule Odyssey.Auth.Guardian do
     user = claims["sub"]
     |> Accounts.get_user!
     {:ok, user}
+  end
+
+  def build_claims(claims, _resource, opts) do
+    claims =
+      claims
+      |> encode_permissions_into_claims!(Keyword.get(opts, :permissions))
+    {:ok, claims}
   end
 end

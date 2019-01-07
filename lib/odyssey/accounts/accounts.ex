@@ -8,6 +8,10 @@ defmodule Odyssey.Accounts do
 
   def get_user!(id), do: Repo.get!(User, id)
 
+  def list_users do
+    Repo.all(User)
+  end
+
   def create_user(attrs \\ %{}) do
     %User{}
     |> User.registration_changeset(attrs)
@@ -17,7 +21,7 @@ defmodule Odyssey.Accounts do
   def token_sign_in(email, password) do
     case email_password_auth(email, password) do
       {:ok, user} ->
-        Guardian.encode_and_sign(user)
+        Guardian.encode_and_sign(user, %{}, permissions: user.permissions)
       _ ->
       {:error, :unauthorized}
     end

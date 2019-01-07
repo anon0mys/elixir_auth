@@ -36,5 +36,6 @@ defmodule OdysseyWeb.Router do
     pipe_through [:api, :jwt_authenticated]
 
     get "/my-account", UserController, :show
+    get "/users", UserController, :index
   end
 end

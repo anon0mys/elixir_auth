@@ -8,6 +8,7 @@ defmodule Odyssey.Accounts.User do
     field :email, :string
     field :name, :string
     field :password_hash, :string
+    field :permissions, :map, default: %{default: [:my_profile]}
     field :password, :string, virtual: true
     field :password_confirmation, :string, virtual: true
 

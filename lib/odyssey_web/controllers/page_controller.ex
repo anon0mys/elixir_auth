@@ -3,7 +3,6 @@ defmodule OdysseyWeb.PageController do
 
   alias Odyssey.Auth
   alias Odyssey.Auth.Guardian
-  alias Odyssey.Accounts.User
 
   def index(conn, _params) do
     render(conn, "index.html")

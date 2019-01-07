@@ -2,7 +2,9 @@ defmodule OdysseyWeb.UserControllerTest do
   use OdysseyWeb.ConnCase
 
   alias Odyssey.Accounts
+  alias Odyssey.Accounts.User
   alias Odyssey.Auth.Guardian
+  alias Odyssey.Repo
 
   @user_params %{
     name: "Test User",
@@ -11,13 +13,73 @@ defmodule OdysseyWeb.UserControllerTest do
     password_confirmation: "password"
   }
 
+  @admin_params %User{
+    name: "Test Admin",
+    email: "admin@test.com",
+    password_hash: Comeonin.Bcrypt.hashpwsalt("password"),
+    password: "password",
+    password_confirmation: "password",
+    permissions: %{admin: [:view_all_users]}
+  }
+
   def fixture(:user) do
     {:ok, user} = Accounts.create_user(@user_params)
     user
   end
 
+  def fixture(:admin) do
+    Repo.insert!(@admin_params)
+  end
+
   def sign_in(user) do
-    Guardian.encode_and_sign(user)
+    Guardian.encode_and_sign(user, %{}, permissions: user.permissions)
+  end
+
+  describe "index/1" do
+    test "lists all users for user with admin permissions", %{conn: conn} do
+      users = [%{name: "John", email: "john@example.com", password: "john pass", password_confirmation: "john pass"},
+               %{name: "Jane", email: "jane@example.com", password: "jane pass", password_confirmation: "jane pass"}]
+
+      # create users local to this database connection and test
+      [{:ok, user1},{:ok, user2}] = Enum.map(users, &Accounts.create_user(&1))
+
+      admin = fixture(:admin)
+      with {:ok, token, _claims} <- sign_in(admin) do
+        response =
+          conn
+          |> put_req_header("authorization", "Bearer #{token}")
+          |> get(Routes.user_path(conn, :index))
+          |> json_response(200)
+
+        expected = %{
+          "data" => [
+            %{ "name" => user1.name, "id" => user1.id, "email" => user1.email },
+            %{ "name" => user2.name, "id" => user2.id, "email" => user2.email },
+            %{ "name" => admin.name, "id" => admin.id, "email" => admin.email },
+          ]
+        }
+        assert response == expected
+      end
+    end
+
+    test "returns unauthorized error for invalid permissions", %{conn: conn} do
+      users = [%{name: "John", email: "john@example.com", password: "john pass", password_confirmation: "john pass"},
+               %{name: "Jane", email: "jane@example.com", password: "jane pass", password_confirmation: "jane pass"}]
+
+      # create users local to this database connection and test
+      Enum.map(users, &Accounts.create_user(&1))
+
+      user = fixture(:user)
+      with {:ok, token, _claims} <- sign_in(user) do
+        response =
+          conn
+          |> put_req_header("authorization", "Bearer #{token}")
+          |> get(Routes.user_path(conn, :index))
+
+        assert response.status == 401
+        assert response.resp_body == "{\"error\":\"unauthorized\"}"
+      end
+    end
   end
 
   describe "create/2" do
