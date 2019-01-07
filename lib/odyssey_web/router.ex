@@ -36,6 +36,12 @@ defmodule OdysseyWeb.Router do
     pipe_through [:api, :jwt_authenticated]
 
     get "/my-account", UserController, :my_account
-    resources "/users", UserController, only: [:index, :show]
+    resources "/users", UserController, only: [:update]
+  end
+
+  scope "/api/v1/admin",as: :admin do
+    pipe_through [:api, :jwt_authenticated]
+
+    resources "/users", OdysseyWeb.Admin.UserController
   end
 end

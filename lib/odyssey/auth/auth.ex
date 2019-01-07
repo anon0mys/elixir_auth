@@ -4,11 +4,18 @@ defmodule Odyssey.Auth do
   alias Odyssey.Repo
   alias Comeonin.Bcrypt
   alias Odyssey.Accounts.User
+  alias Odyssey.Auth.Guardian
 
   def authenticate_user(email, password) do
     query = from u in User, where: u.email == ^email
     Repo.one(query)
     |> check_password(password)
+  end
+
+  def check_permission(claims, permission) do
+    claims
+      |> Guardian.decode_permissions_from_claims
+      |> Guardian.all_permissions?(permission)
   end
 
   defp check_password(nil, _), do: {:error, "Incorrect email or password"}

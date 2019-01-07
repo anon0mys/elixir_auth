@@ -18,6 +18,16 @@ defmodule Odyssey.Accounts do
     |> Repo.insert()
   end
 
+  def update_user(%User{} = user, attrs) do
+    user
+    |> User.update_changeset(attrs)
+    |> Repo.update()
+  end
+
+  def delete_user(%User{} = user) do
+    Repo.delete(user)
+  end
+
   def token_sign_in(email, password) do
     case email_password_auth(email, password) do
       {:ok, user} ->

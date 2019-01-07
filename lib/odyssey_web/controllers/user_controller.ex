@@ -14,6 +14,19 @@ defmodule OdysseyWeb.UserController do
     end
   end
 
+  def update(conn, %{"id" => id, "user" => user_params}) do
+    target_user = Accounts.get_user!(id)
+    current_user = Auth.Guardian.Plug.current_resource(conn)
+
+    if current_user.id == target_user.id do
+      with {:ok, %User{} = user} <- Accounts.update_user(target_user, user_params) do
+        render(conn, "show.json", user: user)
+      end
+    else
+      {:error, :no_permission}
+    end
+  end
+
   def sign_in(conn, %{"email" => email, "password" => password}) do
     case Accounts.token_sign_in(email, password) do
       {:ok, token, _claims} ->
@@ -26,15 +39,5 @@ defmodule OdysseyWeb.UserController do
   def my_account(conn, _params) do
     user = Auth.Guardian.Plug.current_resource(conn)
     conn |> render("user.json", user: user)
-  end
-
-  def show(conn, %{"id" => id}) do
-    user = Accounts.get_user!(id)
-    conn |> render("user.json", user: user)
-  end
-
-  def index(conn, _params) do
-    users = Accounts.list_users()
-    render(conn, "index.json", users: users)
   end
 end

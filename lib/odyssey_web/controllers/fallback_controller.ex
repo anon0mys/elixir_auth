@@ -20,4 +20,10 @@ defmodule OdysseyWeb.FallbackController do
     |> put_status(:unauthorized)
     |> json(%{error: "Login error"})
   end
+
+  def call(conn, {:error, :no_permission}) do
+    conn
+    |> put_status(:unauthorized)
+    |> json(%{error: "unauthorized"})
+  end
 end
