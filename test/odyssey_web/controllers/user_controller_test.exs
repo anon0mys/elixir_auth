@@ -21,6 +21,7 @@ defmodule OdysseyWeb.UserControllerTest do
     permissions: %{admin: [:view_all_users, :edit_users]}
   }
   @default_permissions %{"default" => ["my_profile"]}
+  @admin_permissions %{"admin" => ["view_all_users", "edit_users"]}
 
   def fixture(_, user_params \\ @user_params)
 
@@ -90,6 +91,25 @@ defmodule OdysseyWeb.UserControllerTest do
         expected = %{"data" => %{"email" => user.email, "id" => user.id, "name" => "Test Updated Name"}}
 
         assert response == expected
+      end
+    end
+
+    test "updates a user ignoring attempts to escalate permissions", %{conn: conn} do
+      user = fixture(:user)
+      update_params = %{name: "Test Updated Name", permissions: @admin_permissions}
+
+      with {:ok, token, _claims} <- sign_in(user) do
+        response =
+          conn
+          |> put_req_header("authorization", "Bearer #{token}")
+          |> patch(Routes.user_path(conn, :update, user.id, %{"user" => update_params}))
+          |> json_response(200)
+
+        expected = %{"data" => %{"email" => user.email, "id" => user.id, "name" => "Test Updated Name"}}
+
+        assert response == expected
+        updated_user = Repo.get(User, user.id)
+        assert updated_user.permissions == @default_permissions
       end
     end
 

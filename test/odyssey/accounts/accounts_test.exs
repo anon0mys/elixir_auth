@@ -6,6 +6,9 @@ defmodule Odyssey.AccountsTest do
   describe "accounts" do
     alias Odyssey.Accounts.User
 
+    @default_permissions %{"default" => ["my_profile"]}
+    @admin_permissions %{"admin" => ["view_all_users", "edit_users"]}
+
     @valid_attrs %{
       name: "Test User",
       email: "user@test.com",
@@ -13,8 +16,9 @@ defmodule Odyssey.AccountsTest do
       password_confirmation: "password"
     }
     @update_attrs %{name: "Test Update User", email: "user_update@test.com"}
+    @admin_update_attrs %{name: "Test Update User", permissions: @admin_permissions}
     @invalid_attrs %{name: nil, email: nil, password: nil, password_confirmation: "password"}
-    @default_permissions %{"default" => ["my_profile"]}
+
 
     def fixture(:user, user_params \\ @valid_attrs) do
       {:ok, user} = Accounts.create_user(user_params)
@@ -61,6 +65,13 @@ defmodule Odyssey.AccountsTest do
       assert {:error, %Ecto.Changeset{}} = Accounts.update_user(user, @invalid_attrs)
       user = %{user | password: nil, password_confirmation: nil, permissions: @default_permissions}
       assert user == Accounts.get_user!(user.id)
+    end
+
+    test "admin_update_user/2 with valid data updates the user" do
+      user = fixture(:user)
+      assert {:ok, %User{} = user} = Accounts.update_user(user, @admin_update_attrs)
+      assert user.name == @admin_update_attrs[:name]
+      assert user.permissions == @admin_permissions
     end
 
     test "delete_user/1 deletes the user" do

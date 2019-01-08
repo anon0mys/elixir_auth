@@ -38,7 +38,7 @@ defmodule OdysseyWeb.Admin.UserControllerTest do
   end
 
   describe "index/1" do
-    test "lists all users when current user has admin permissions", %{conn: conn} do
+    test "lists all users when current user has admin view_all_users permission", %{conn: conn} do
       users = [%{name: "John", email: "john@example.com", password: "john pass", password_confirmation: "john pass"},
                %{name: "Jane", email: "jane@example.com", password: "jane pass", password_confirmation: "jane pass"}]
 
@@ -85,7 +85,7 @@ defmodule OdysseyWeb.Admin.UserControllerTest do
   end
 
   describe "show/2" do
-    test "shows a user when current user has admin permissions", %{conn: conn} do
+    test "shows a user when current user has admin view_all_users permission", %{conn: conn} do
       user = fixture(:user)
       admin = fixture(:admin)
       with {:ok, token, _claims} <- sign_in(admin) do
@@ -102,7 +102,7 @@ defmodule OdysseyWeb.Admin.UserControllerTest do
       end
     end
 
-    test "returns unauthorized error for invalid permissions", %{conn: conn} do
+    test "returns unauthorized error when current user has invalid permissions", %{conn: conn} do
       user_params = %{
         name: "Test Visible user",
         email: "user2@test.com",
@@ -125,7 +125,7 @@ defmodule OdysseyWeb.Admin.UserControllerTest do
   end
 
   describe "create/2" do
-    test "creates a user and returns a jwt token if user is admin", %{conn: conn} do
+    test "creates a user when current user has admin edit_users permission", %{conn: conn} do
       admin = fixture(:admin)
       with {:ok, token, _claims} <- sign_in(admin) do
         conn =
@@ -137,7 +137,7 @@ defmodule OdysseyWeb.Admin.UserControllerTest do
       end
     end
 
-    test "returns an error and does not create user if user not admin", %{conn: conn} do
+    test "returns unauthorized error when current user has invalid permissions", %{conn: conn} do
       user_params = %{
         name: "Test Visible user",
         email: "user2@test.com",
@@ -159,7 +159,7 @@ defmodule OdysseyWeb.Admin.UserControllerTest do
   end
 
   describe "update/2" do
-    test "updates a user and returns information when user is admin", %{conn: conn} do
+    test "updates a user when current user has admin edit_users permission", %{conn: conn} do
       user_params = %{
         name: "User to update",
         email: "user2@test.com",
@@ -185,7 +185,31 @@ defmodule OdysseyWeb.Admin.UserControllerTest do
       end
     end
 
-    test "returns an error and does not update user if user is not admin", %{conn: conn} do
+    test "updates a user's permissions when current user has admin edit_users permission", %{conn: conn} do
+      user_params = %{
+        name: "User to update",
+        email: "user2@test.com",
+        password: "password",
+        password_confirmation: "password"
+      }
+
+      update_params = %{"permissions" => %{"admin" => ["view_all_users", "edit_users"]}}
+
+      update_user = fixture(:user, user_params)
+      admin = fixture(:admin)
+
+      with {:ok, token, _claims} <- sign_in(admin) do
+        conn
+          |> put_req_header("authorization", "Bearer #{token}")
+          |> patch(Routes.admin_user_path(conn, :update, update_user.id, %{"user" => update_params}))
+          |> json_response(200)
+
+        updated_user = Repo.get(User, update_user.id)
+        assert updated_user.permissions == update_params["permissions"]
+      end
+    end
+
+    test "returns unauthorized error when current user has invalid permissions", %{conn: conn} do
       user_params = %{
         name: "User to update",
         email: "user2@test.com",
@@ -211,7 +235,7 @@ defmodule OdysseyWeb.Admin.UserControllerTest do
   end
 
   describe "delete/1" do
-    test "deletes a user when current user has admin permissions", %{conn: conn} do
+    test "deletes a user when current user has admin edit_users permission", %{conn: conn} do
       user = fixture(:user)
       admin = fixture(:admin)
       with {:ok, token, _claims} <- sign_in(admin) do
@@ -226,7 +250,7 @@ defmodule OdysseyWeb.Admin.UserControllerTest do
       assert Repo.get(User, user.id) == nil
     end
 
-    test "does not delete a user when current user is not admin", %{conn: conn} do
+    test "returns unauthorized error when current user has invalid permissions", %{conn: conn} do
       user_params = %{
         name: "Test Visible user",
         email: "user2@test.com",
